@@ -16,6 +16,9 @@ func NewMux(database *pgxpool.Pool) *http.ServeMux {
 	userSettingsController := controller.NewUserSettingsController(
 		repository.NewUserRepository(database),
 	)
+	frequentPhraseController := controller.NewFrequentPhraseController(
+		repository.NewFrequentPhraseRepository(database),
+	)
 
 	mux.HandleFunc("GET /healthz", healthController.Show)
 	mux.HandleFunc("GET /api/v1", serviceController.Show)
@@ -26,6 +29,18 @@ func NewMux(database *pgxpool.Pool) *http.ServeMux {
 	mux.HandleFunc(
 		"PATCH /api/v1/users/{userID}/settings",
 		userSettingsController.Update,
+	)
+	mux.HandleFunc(
+		"GET /api/v1/users/{userID}/phrases",
+		frequentPhraseController.Index,
+	)
+	mux.HandleFunc(
+		"POST /api/v1/users/{userID}/phrases",
+		frequentPhraseController.Create,
+	)
+	mux.HandleFunc(
+		"DELETE /api/v1/users/{userID}/phrases/{phraseID}",
+		frequentPhraseController.Delete,
 	)
 	return mux
 }

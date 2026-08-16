@@ -17,6 +17,8 @@ Kokotoba の API を実装するための Go バックエンドの初期スキ�
 - `/api/v1` の API ルート用プレースホルダー
 - `/api/v1/users/{userID}/settings` のユーザー設定取得
 - `PATCH /api/v1/users/{userID}/settings` のユーザー設定部分更新
+- `/api/v1/users/{userID}/phrases` のよく使う文章の一覧取得・登録
+- `/api/v1/users/{userID}/phrases/{phraseID}` のよく使う文章の削除
 - `kokotoba-infra` の PostgreSQL への共有接続プール
 
 ## 起動
@@ -35,7 +37,8 @@ go run ./cmd/api
 `postgresql://kokotoba:kokotoba_dev_password@localhost:5432/kokotoba` です。
 
 スキーマやマイグレーションはこのリポジトリには置かず、`kokotoba-infra/postgres/migrations` で一元管理します。
-ユーザー本体は `users`、ユーザーごとの設定は `user_settings` テーブルに保存します。
+ユーザー本体は `users`、ユーザーごとの設定は `user_settings`、
+よく使う文章は `frequent_phrases` テーブルに保存します。
 
 デモユーザー（ID `1`）の設定確認:
 
@@ -58,3 +61,15 @@ curl -X PATCH http://localhost:8080/api/v1/users/1/settings \
 - `use_history_for_suggestions`, `use_location_for_suggestions`
 - `use_profile_for_suggestions`, `show_confirmation_after_selection`
 - `save_conversation_history`, `allow_external_communication`
+
+よく使う文章の一覧取得・登録・削除:
+
+```sh
+curl http://localhost:8080/api/v1/users/1/phrases
+
+curl -X POST http://localhost:8080/api/v1/users/1/phrases \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"ゆっくり話してください"}'
+
+curl -X DELETE http://localhost:8080/api/v1/users/1/phrases/1
+```
