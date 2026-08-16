@@ -19,6 +19,7 @@ type frequentPhraseRepository interface {
 	List(context.Context, int64) ([]repository.FrequentPhrase, error)
 	Create(context.Context, int64, string) (repository.FrequentPhrase, error)
 	Delete(context.Context, int64, int64) error
+	Reorder(context.Context, int64, []int64) error
 }
 
 type FrequentPhraseController struct {
@@ -98,11 +99,72 @@ func (c *FrequentPhraseController) Delete(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (c *FrequentPhraseController) Reorder(w http.ResponseWriter, r *http.Request) {
+	userID, ok := parseUserID(w, r)
+	if !ok {
+		return
+	}
+
+	request, err := decodeReorderPhrasesRequest(w, r)
+	if err != nil {
+		_ = view.JSON(w, http.StatusBadRequest, model.ErrorResponse{
+			Message: err.Error(),
+		})
+		return
+	}
+	if request.PhraseIDs == nil {
+		_ = view.JSON(w, http.StatusUnprocessableEntity, model.ErrorResponse{
+			Message: "phrase_ids is required",
+		})
+		return
+	}
+	seen := make(map[int64]struct{}, len(request.PhraseIDs))
+	for _, phraseID := range request.PhraseIDs {
+		if phraseID <= 0 {
+			_ = view.JSON(w, http.StatusUnprocessableEntity, model.ErrorResponse{
+				Message: "phrase_ids must contain positive integers",
+			})
+			return
+		}
+		if _, duplicate := seen[phraseID]; duplicate {
+			_ = view.JSON(w, http.StatusUnprocessableEntity, model.ErrorResponse{
+				Message: "phrase_ids must not contain duplicates",
+			})
+			return
+		}
+		seen[phraseID] = struct{}{}
+	}
+
+	if handlePhraseRepositoryError(
+		w,
+		c.repository.Reorder(r.Context(), userID, request.PhraseIDs),
+	) {
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func decodeCreatePhraseRequest(
 	w http.ResponseWriter,
 	r *http.Request,
 ) (model.CreateFrequentPhraseRequest, error) {
 	var request model.CreateFrequentPhraseRequest
+	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&request); err != nil {
+		return request, errors.New("request body must be valid JSON")
+	}
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		return request, errors.New("request body must contain one JSON object")
+	}
+	return request, nil
+}
+
+func decodeReorderPhrasesRequest(
+	w http.ResponseWriter,
+	r *http.Request,
+) (model.ReorderFrequentPhrasesRequest, error) {
+	var request model.ReorderFrequentPhrasesRequest
 	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&request); err != nil {
@@ -130,6 +192,9 @@ func handlePhraseRepositoryError(w http.ResponseWriter, err error) bool {
 	case errors.Is(err, repository.ErrPhraseDuplicate):
 		status = http.StatusConflict
 		message = "frequent phrase already exists"
+	case errors.Is(err, repository.ErrPhraseOrderInvalid):
+		status = http.StatusUnprocessableEntity
+		message = "phrase_ids must contain every frequent phrase exactly once"
 	}
 	_ = view.JSON(w, status, model.ErrorResponse{Message: message})
 	return true

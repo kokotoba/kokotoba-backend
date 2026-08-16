@@ -18,6 +18,7 @@ Kokotoba の API を実装するための Go バックエンドの初期スキ�
 - `/api/v1/users/{userID}/settings` のユーザー設定取得
 - `PATCH /api/v1/users/{userID}/settings` のユーザー設定部分更新
 - `/api/v1/users/{userID}/phrases` のよく使う文章の一覧取得・登録
+- `/api/v1/users/{userID}/phrases/order` の表示順保存
 - `/api/v1/users/{userID}/phrases/{phraseID}` のよく使う文章の削除
 - `kokotoba-infra` の PostgreSQL への共有接続プール
 
@@ -72,4 +73,12 @@ curl -X POST http://localhost:8080/api/v1/users/1/phrases \
   -d '{"text":"ゆっくり話してください"}'
 
 curl -X DELETE http://localhost:8080/api/v1/users/1/phrases/1
+```
+
+表示順は現在登録されている全文章のIDを、表示したい順で送信します。
+
+```sh
+curl -X PUT http://localhost:8080/api/v1/users/1/phrases/order \
+  -H 'Content-Type: application/json' \
+  -d '{"phrase_ids":[3,1,2]}'
 ```

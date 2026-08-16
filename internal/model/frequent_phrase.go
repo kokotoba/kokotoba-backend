@@ -15,6 +15,10 @@ type CreateFrequentPhraseRequest struct {
 	Text string `json:"text"`
 }
 
+type ReorderFrequentPhrasesRequest struct {
+	PhraseIDs []int64 `json:"phrase_ids"`
+}
+
 func NewFrequentPhraseResponse(
 	phrase repository.FrequentPhrase,
 ) FrequentPhraseResponse {

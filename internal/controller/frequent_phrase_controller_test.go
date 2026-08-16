@@ -11,10 +11,11 @@ import (
 )
 
 type fakeFrequentPhraseRepository struct {
-	phrases     []repository.FrequentPhrase
-	err         error
-	createdText string
-	deletedID   int64
+	phrases      []repository.FrequentPhrase
+	err          error
+	createdText  string
+	deletedID    int64
+	reorderedIDs []int64
 }
 
 func (r *fakeFrequentPhraseRepository) List(
@@ -42,6 +43,15 @@ func (r *fakeFrequentPhraseRepository) Delete(
 	phraseID int64,
 ) error {
 	r.deletedID = phraseID
+	return r.err
+}
+
+func (r *fakeFrequentPhraseRepository) Reorder(
+	_ context.Context,
+	_ int64,
+	phraseIDs []int64,
+) error {
+	r.reorderedIDs = phraseIDs
 	return r.err
 }
 
@@ -122,5 +132,51 @@ func TestFrequentPhraseControllerDelete(t *testing.T) {
 	}
 	if storage.deletedID != 12 {
 		t.Fatalf("deleted ID = %d, want 12", storage.deletedID)
+	}
+}
+
+func TestFrequentPhraseControllerReorder(t *testing.T) {
+	storage := &fakeFrequentPhraseRepository{}
+	controller := NewFrequentPhraseController(storage)
+	request := httptest.NewRequest(
+		http.MethodPut,
+		"/api/v1/users/1/phrases/order",
+		strings.NewReader(`{"phrase_ids":[3,1,2]}`),
+	)
+	request.SetPathValue("userID", "1")
+	response := httptest.NewRecorder()
+
+	controller.Reorder(response, request)
+
+	if response.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusNoContent)
+	}
+	if got := storage.reorderedIDs; len(got) != 3 || got[0] != 3 || got[1] != 1 || got[2] != 2 {
+		t.Fatalf("reordered IDs = %v, want [3 1 2]", got)
+	}
+}
+
+func TestFrequentPhraseControllerReorderRejectsDuplicates(t *testing.T) {
+	storage := &fakeFrequentPhraseRepository{}
+	controller := NewFrequentPhraseController(storage)
+	request := httptest.NewRequest(
+		http.MethodPut,
+		"/api/v1/users/1/phrases/order",
+		strings.NewReader(`{"phrase_ids":[1,1]}`),
+	)
+	request.SetPathValue("userID", "1")
+	response := httptest.NewRecorder()
+
+	controller.Reorder(response, request)
+
+	if response.Code != http.StatusUnprocessableEntity {
+		t.Fatalf(
+			"status = %d, want %d",
+			response.Code,
+			http.StatusUnprocessableEntity,
+		)
+	}
+	if storage.reorderedIDs != nil {
+		t.Fatalf("repository was called with %v", storage.reorderedIDs)
 	}
 }

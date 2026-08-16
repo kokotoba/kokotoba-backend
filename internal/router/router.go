@@ -39,6 +39,10 @@ func NewMux(database *pgxpool.Pool) *http.ServeMux {
 		frequentPhraseController.Create,
 	)
 	mux.HandleFunc(
+		"PUT /api/v1/users/{userID}/phrases/order",
+		frequentPhraseController.Reorder,
+	)
+	mux.HandleFunc(
 		"DELETE /api/v1/users/{userID}/phrases/{phraseID}",
 		frequentPhraseController.Delete,
 	)
