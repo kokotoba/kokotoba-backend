@@ -33,7 +33,7 @@ func NewFrequentPhraseController(
 }
 
 func (c *FrequentPhraseController) Index(w http.ResponseWriter, r *http.Request) {
-	userID, ok := parseUserID(w, r)
+	userID, ok := authenticatedUserID(w, r)
 	if !ok {
 		return
 	}
@@ -45,7 +45,7 @@ func (c *FrequentPhraseController) Index(w http.ResponseWriter, r *http.Request)
 }
 
 func (c *FrequentPhraseController) Create(w http.ResponseWriter, r *http.Request) {
-	userID, ok := parseUserID(w, r)
+	userID, ok := authenticatedUserID(w, r)
 	if !ok {
 		return
 	}
@@ -79,7 +79,7 @@ func (c *FrequentPhraseController) Create(w http.ResponseWriter, r *http.Request
 }
 
 func (c *FrequentPhraseController) Delete(w http.ResponseWriter, r *http.Request) {
-	userID, ok := parseUserID(w, r)
+	userID, ok := authenticatedUserID(w, r)
 	if !ok {
 		return
 	}
@@ -100,7 +100,7 @@ func (c *FrequentPhraseController) Delete(w http.ResponseWriter, r *http.Request
 }
 
 func (c *FrequentPhraseController) Reorder(w http.ResponseWriter, r *http.Request) {
-	userID, ok := parseUserID(w, r)
+	userID, ok := authenticatedUserID(w, r)
 	if !ok {
 		return
 	}

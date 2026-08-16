@@ -3,11 +3,13 @@ package controller
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"kokotoba-backend/internal/authn"
 	"kokotoba-backend/internal/repository"
 )
 
@@ -49,8 +51,7 @@ func TestUserSettingsControllerShow(t *testing.T) {
 			UseHistoryForSuggestions: true,
 		},
 	})
-	request := httptest.NewRequest(http.MethodGet, "/api/v1/users/1/settings", nil)
-	request.SetPathValue("userID", "1")
+	request := authenticatedRequest(http.MethodGet, "/api/v1/me/settings", nil, 1)
 	response := httptest.NewRecorder()
 
 	controller.Show(response, request)
@@ -70,16 +71,15 @@ func TestUserSettingsControllerShow(t *testing.T) {
 	}
 }
 
-func TestUserSettingsControllerRejectsInvalidUserID(t *testing.T) {
+func TestUserSettingsControllerRequiresAuthenticatedUser(t *testing.T) {
 	controller := NewUserSettingsController(&fakeUserSettingsRepository{})
-	request := httptest.NewRequest(http.MethodGet, "/api/v1/users/invalid/settings", nil)
-	request.SetPathValue("userID", "invalid")
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/me/settings", nil)
 	response := httptest.NewRecorder()
 
 	controller.Show(response, request)
 
-	if response.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want %d", response.Code, http.StatusBadRequest)
+	if response.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusUnauthorized)
 	}
 }
 
@@ -87,8 +87,7 @@ func TestUserSettingsControllerReturnsNotFound(t *testing.T) {
 	controller := NewUserSettingsController(&fakeUserSettingsRepository{
 		err: repository.ErrUserNotFound,
 	})
-	request := httptest.NewRequest(http.MethodGet, "/api/v1/users/99/settings", nil)
-	request.SetPathValue("userID", "99")
+	request := authenticatedRequest(http.MethodGet, "/api/v1/me/settings", nil, 99)
 	response := httptest.NewRecorder()
 
 	controller.Show(response, request)
@@ -102,8 +101,7 @@ func TestUserSettingsControllerReturnsInternalServerError(t *testing.T) {
 	controller := NewUserSettingsController(&fakeUserSettingsRepository{
 		err: errors.New("database unavailable"),
 	})
-	request := httptest.NewRequest(http.MethodGet, "/api/v1/users/1/settings", nil)
-	request.SetPathValue("userID", "1")
+	request := authenticatedRequest(http.MethodGet, "/api/v1/me/settings", nil, 1)
 	response := httptest.NewRecorder()
 
 	controller.Show(response, request)
@@ -132,16 +130,16 @@ func TestUserSettingsControllerUpdate(t *testing.T) {
 		},
 	}
 	controller := NewUserSettingsController(storage)
-	request := httptest.NewRequest(
+	request := authenticatedRequest(
 		http.MethodPatch,
-		"/api/v1/users/1/settings",
+		"/api/v1/me/settings",
 		strings.NewReader(`{
 			"text_size":" 標準 ",
 			"suggestion_count":5,
 			"use_history_for_suggestions":false
 		}`),
+		1,
 	)
-	request.SetPathValue("userID", "1")
 	response := httptest.NewRecorder()
 
 	controller.Update(response, request)
@@ -179,12 +177,12 @@ func TestUserSettingsControllerUpdateRejectsInvalidBody(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			controller := NewUserSettingsController(&fakeUserSettingsRepository{})
-			request := httptest.NewRequest(
+			request := authenticatedRequest(
 				http.MethodPatch,
-				"/api/v1/users/1/settings",
+				"/api/v1/me/settings",
 				strings.NewReader(test.body),
+				1,
 			)
-			request.SetPathValue("userID", "1")
 			response := httptest.NewRecorder()
 
 			controller.Update(response, request)
@@ -195,4 +193,14 @@ func TestUserSettingsControllerUpdateRejectsInvalidBody(t *testing.T) {
 			}
 		})
 	}
+}
+
+func authenticatedRequest(
+	method string,
+	target string,
+	body io.Reader,
+	userID int64,
+) *http.Request {
+	request := httptest.NewRequest(method, target, body)
+	return request.WithContext(authn.ContextWithUser(request.Context(), authn.User{ID: userID}))
 }

@@ -57,8 +57,7 @@ func (r *fakeFrequentPhraseRepository) Reorder(
 
 func TestFrequentPhraseControllerIndexReturnsEmptyList(t *testing.T) {
 	controller := NewFrequentPhraseController(&fakeFrequentPhraseRepository{})
-	request := httptest.NewRequest(http.MethodGet, "/api/v1/users/1/phrases", nil)
-	request.SetPathValue("userID", "1")
+	request := authenticatedRequest(http.MethodGet, "/api/v1/me/phrases", nil, 1)
 	response := httptest.NewRecorder()
 
 	controller.Index(response, request)
@@ -74,12 +73,12 @@ func TestFrequentPhraseControllerIndexReturnsEmptyList(t *testing.T) {
 func TestFrequentPhraseControllerCreateTrimsText(t *testing.T) {
 	storage := &fakeFrequentPhraseRepository{}
 	controller := NewFrequentPhraseController(storage)
-	request := httptest.NewRequest(
+	request := authenticatedRequest(
 		http.MethodPost,
-		"/api/v1/users/1/phrases",
+		"/api/v1/me/phrases",
 		strings.NewReader(`{"text":"  もう一度お願いします  "}`),
+		1,
 	)
-	request.SetPathValue("userID", "1")
 	response := httptest.NewRecorder()
 
 	controller.Create(response, request)
@@ -94,12 +93,12 @@ func TestFrequentPhraseControllerCreateTrimsText(t *testing.T) {
 
 func TestFrequentPhraseControllerCreateRejectsEmptyText(t *testing.T) {
 	controller := NewFrequentPhraseController(&fakeFrequentPhraseRepository{})
-	request := httptest.NewRequest(
+	request := authenticatedRequest(
 		http.MethodPost,
-		"/api/v1/users/1/phrases",
+		"/api/v1/me/phrases",
 		strings.NewReader(`{"text":" "}`),
+		1,
 	)
-	request.SetPathValue("userID", "1")
 	response := httptest.NewRecorder()
 
 	controller.Create(response, request)
@@ -116,12 +115,12 @@ func TestFrequentPhraseControllerCreateRejectsEmptyText(t *testing.T) {
 func TestFrequentPhraseControllerDelete(t *testing.T) {
 	storage := &fakeFrequentPhraseRepository{}
 	controller := NewFrequentPhraseController(storage)
-	request := httptest.NewRequest(
+	request := authenticatedRequest(
 		http.MethodDelete,
-		"/api/v1/users/1/phrases/12",
+		"/api/v1/me/phrases/12",
 		nil,
+		1,
 	)
-	request.SetPathValue("userID", "1")
 	request.SetPathValue("phraseID", "12")
 	response := httptest.NewRecorder()
 
@@ -138,12 +137,12 @@ func TestFrequentPhraseControllerDelete(t *testing.T) {
 func TestFrequentPhraseControllerReorder(t *testing.T) {
 	storage := &fakeFrequentPhraseRepository{}
 	controller := NewFrequentPhraseController(storage)
-	request := httptest.NewRequest(
+	request := authenticatedRequest(
 		http.MethodPut,
-		"/api/v1/users/1/phrases/order",
+		"/api/v1/me/phrases/order",
 		strings.NewReader(`{"phrase_ids":[3,1,2]}`),
+		1,
 	)
-	request.SetPathValue("userID", "1")
 	response := httptest.NewRecorder()
 
 	controller.Reorder(response, request)
@@ -159,12 +158,12 @@ func TestFrequentPhraseControllerReorder(t *testing.T) {
 func TestFrequentPhraseControllerReorderRejectsDuplicates(t *testing.T) {
 	storage := &fakeFrequentPhraseRepository{}
 	controller := NewFrequentPhraseController(storage)
-	request := httptest.NewRequest(
+	request := authenticatedRequest(
 		http.MethodPut,
-		"/api/v1/users/1/phrases/order",
+		"/api/v1/me/phrases/order",
 		strings.NewReader(`{"phrase_ids":[1,1]}`),
+		1,
 	)
-	request.SetPathValue("userID", "1")
 	response := httptest.NewRecorder()
 
 	controller.Reorder(response, request)

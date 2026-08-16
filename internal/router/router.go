@@ -9,7 +9,9 @@ import (
 	"kokotoba-backend/internal/repository"
 )
 
-func NewMux(database *pgxpool.Pool) *http.ServeMux {
+type Middleware func(http.Handler) http.Handler
+
+func NewMux(database *pgxpool.Pool, authenticate Middleware) *http.ServeMux {
 	mux := http.NewServeMux()
 	healthController := controller.NewHealthController(database)
 	serviceController := controller.NewServiceController("kokotoba-backend", "dev")
@@ -21,30 +23,26 @@ func NewMux(database *pgxpool.Pool) *http.ServeMux {
 	)
 
 	mux.HandleFunc("GET /healthz", healthController.Show)
-	mux.HandleFunc("GET /api/v1", serviceController.Show)
-	mux.HandleFunc(
-		"GET /api/v1/users/{userID}/settings",
-		userSettingsController.Show,
-	)
-	mux.HandleFunc(
-		"PATCH /api/v1/users/{userID}/settings",
-		userSettingsController.Update,
-	)
-	mux.HandleFunc(
-		"GET /api/v1/users/{userID}/phrases",
-		frequentPhraseController.Index,
-	)
-	mux.HandleFunc(
-		"POST /api/v1/users/{userID}/phrases",
-		frequentPhraseController.Create,
-	)
-	mux.HandleFunc(
-		"PUT /api/v1/users/{userID}/phrases/order",
-		frequentPhraseController.Reorder,
-	)
-	mux.HandleFunc(
-		"DELETE /api/v1/users/{userID}/phrases/{phraseID}",
+	handleAuthenticated(mux, "GET /api/v1", serviceController.Show, authenticate)
+	handleAuthenticated(mux, "GET /api/v1/me/settings", userSettingsController.Show, authenticate)
+	handleAuthenticated(mux, "PATCH /api/v1/me/settings", userSettingsController.Update, authenticate)
+	handleAuthenticated(mux, "GET /api/v1/me/phrases", frequentPhraseController.Index, authenticate)
+	handleAuthenticated(mux, "POST /api/v1/me/phrases", frequentPhraseController.Create, authenticate)
+	handleAuthenticated(mux, "PUT /api/v1/me/phrases/order", frequentPhraseController.Reorder, authenticate)
+	handleAuthenticated(
+		mux,
+		"DELETE /api/v1/me/phrases/{phraseID}",
 		frequentPhraseController.Delete,
+		authenticate,
 	)
 	return mux
+}
+
+func handleAuthenticated(
+	mux *http.ServeMux,
+	pattern string,
+	handler http.HandlerFunc,
+	authenticate Middleware,
+) {
+	mux.Handle(pattern, authenticate(handler))
 }

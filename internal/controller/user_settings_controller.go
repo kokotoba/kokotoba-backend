@@ -6,9 +6,9 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"strconv"
 	"strings"
 
+	"kokotoba-backend/internal/authn"
 	"kokotoba-backend/internal/model"
 	"kokotoba-backend/internal/repository"
 	"kokotoba-backend/internal/view"
@@ -32,7 +32,7 @@ func NewUserSettingsController(repository userSettingsRepository) *UserSettingsC
 }
 
 func (c *UserSettingsController) Show(w http.ResponseWriter, r *http.Request) {
-	userID, ok := parseUserID(w, r)
+	userID, ok := authenticatedUserID(w, r)
 	if !ok {
 		return
 	}
@@ -55,7 +55,7 @@ func (c *UserSettingsController) Show(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *UserSettingsController) Update(w http.ResponseWriter, r *http.Request) {
-	userID, ok := parseUserID(w, r)
+	userID, ok := authenticatedUserID(w, r)
 	if !ok {
 		return
 	}
@@ -95,15 +95,15 @@ func (c *UserSettingsController) Update(w http.ResponseWriter, r *http.Request) 
 	_ = view.JSON(w, http.StatusOK, model.NewUserSettingsResponse(settings))
 }
 
-func parseUserID(w http.ResponseWriter, r *http.Request) (int64, bool) {
-	userID, err := strconv.ParseInt(r.PathValue("userID"), 10, 64)
-	if err != nil || userID <= 0 {
-		_ = view.JSON(w, http.StatusBadRequest, model.ErrorResponse{
-			Message: "userID must be a positive integer",
+func authenticatedUserID(w http.ResponseWriter, r *http.Request) (int64, bool) {
+	user, ok := authn.UserFromContext(r.Context())
+	if !ok {
+		_ = view.JSON(w, http.StatusUnauthorized, model.ErrorResponse{
+			Message: "authentication is required",
 		})
 		return 0, false
 	}
-	return userID, true
+	return user.ID, true
 }
 
 func decodeUpdateRequest(
