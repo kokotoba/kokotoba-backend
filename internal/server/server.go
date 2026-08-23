@@ -43,7 +43,7 @@ func Run(addr string) error {
 
 	srv := &http.Server{
 		Addr:    addr,
-		Handler: router.NewMux(db, authMiddleware.Authenticate),
+		Handler: router.WithCORS(router.NewMux(db, authMiddleware.Authenticate)),
 	}
 
 	log.Printf("kokotoba-backend listening on %s", addr)
