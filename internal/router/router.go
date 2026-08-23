@@ -21,6 +21,9 @@ func NewMux(database *pgxpool.Pool, authenticate Middleware) *http.ServeMux {
 	frequentPhraseController := controller.NewFrequentPhraseController(
 		repository.NewFrequentPhraseRepository(database),
 	)
+	conversationSessionController := controller.NewConversationSessionController(
+		repository.NewConversationSessionRepository(database),
+	)
 
 	mux.HandleFunc("GET /healthz", healthController.Show)
 	handleAuthenticated(mux, "GET /api/v1", serviceController.Show, authenticate)
@@ -33,6 +36,30 @@ func NewMux(database *pgxpool.Pool, authenticate Middleware) *http.ServeMux {
 		mux,
 		"DELETE /api/v1/me/phrases/{phraseID}",
 		frequentPhraseController.Delete,
+		authenticate,
+	)
+	handleAuthenticated(
+		mux,
+		"GET /api/v1/me/sessions",
+		conversationSessionController.Index,
+		authenticate,
+	)
+	handleAuthenticated(
+		mux,
+		"POST /api/v1/me/sessions",
+		conversationSessionController.Create,
+		authenticate,
+	)
+	handleAuthenticated(
+		mux,
+		"POST /api/v1/me/sessions/{sessionID}/end",
+		conversationSessionController.End,
+		authenticate,
+	)
+	handleAuthenticated(
+		mux,
+		"POST /api/v1/me/sessions/{sessionID}/utterances",
+		conversationSessionController.CreateUtterance,
 		authenticate,
 	)
 	return mux
