@@ -21,6 +21,9 @@ Kokotoba の API を実装するための Go バックエンドの初期スキ�
 - `/api/v1/me/phrases` のよく使う文章の一覧取得・登録
 - `/api/v1/me/phrases/order` の表示順保存
 - `/api/v1/me/phrases/{phraseID}` のよく使う文章の削除
+- `/api/v1/me/sessions` の会話セッション開始・再開・履歴一覧
+- `/api/v1/me/sessions/{sessionID}/utterances` の相手・ユーザー発言保存
+- `/api/v1/me/sessions/{sessionID}/end` のセッション終了
 - `kokotoba-infra` の PostgreSQL への共有接続プール
 
 ## 起動
